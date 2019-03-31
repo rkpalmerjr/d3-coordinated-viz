@@ -86,8 +86,37 @@ function setMap(){
 				return "regions " + d.properties.adm1_code;
 			})
 			.attr("d", path);
-	});
 
+		//Variables for data join
+		let attrArray = ["pop_est"];
+
+		//Loop through csv to assign each set of csv attribute values to geojson country
+		for (let i=0; i<europeCountriesData.length; i++){
+			//console.log(europeCountriesData[i]);
+			let csvCountry = europeCountriesData[i]; //The current country
+			let csvKey = csvCountry.name; //The CSV primary key
+			//console.log(csvKey);
+
+			//Loop through geojson countries to find the correct country
+			for (let a=0; a<europeCountries.features.length; a++){
+				//console.log(europeCountries.features[a]);
+				let geojsonProps = europeCountries.features[a].properties; //The current country geojson properties
+				let geojsonKey = geojsonProps.name; //The geojson primary key
+				//console.log(geojsonKey);
+
+				//Where primary keys match, transfer csv data to geojson properties object
+				if (geojsonKey == csvKey){
+					//Assign all attributes and values
+					attrArray.forEach(function(attr) {
+						let val = parseInt(csvCountry[attr]); //Get csv attribute value
+						geojsonProps[attr] = val; //Assign attribute and value to geojson properties
+					});
+				};
+			};
+		};
+
+		//console.log(europeCountries);
+	});
 
 /*
 	//OPTION #2
