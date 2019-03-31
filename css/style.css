@@ -7,8 +7,9 @@
 .countries {
     fill: #FFF;
     fill-opacity: 1%;
-    stroke: #CCC;
+    stroke: #000;
     stroke-width: 2px;
+    stroke-linecap: round;
 }
 
 .regions {

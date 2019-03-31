@@ -4,7 +4,7 @@
 (function(){
 
 	//Pseudo-global variables
-	let attrArray = ["pop_est"]; //List of attributes
+	let attrArray = ["pop_est", "gdp_md_est"]; //List of attributes
 	let expressed = attrArray[0]; //Initial attribute
 
 //Begin script when window loads
@@ -63,8 +63,10 @@
 			joinData(europeCountries, europeCountriesData);
 			console.log(europeCountries.features[0]);
 
+			let colorScale = makeColorScale(europeCountriesData);
+
 			//Add enumeration units to the map
-			setEnumerationUnits(europeCountries, map, path);
+			setEnumerationUnits(europeCountries, map, path, colorScale);
 
 /*			//Add France regions to the map
 			let regions = map.selectAll(".regions")
@@ -126,11 +128,81 @@
 		};
 	};
 
-	function setEnumerationUnits(europeCountries, map, path){
+	function setEnumerationUnits(europeCountries, map, path, colorScale){
 		//Add Europe countries to the map
-		let countries = map.append("path")
+		console.log(europeCountries);
+		console.log(colorScale);
+/*		let countries = map.append("path")
 			.datum(europeCountries)
 			.attr("class", "countries")
-			.attr("d", path);
+			.attr("d", path)
+			.style("fill", function(d){
+				console.log(d);
+				return colorScale(d.properties[expressed]);
+			});*/
+		let countries = map.selectAll(".countries")
+			.data(europeCountries.features)
+			.enter()
+			.append("path")
+			.attr("class", function(d){
+				return "countries " + d.properties.name;
+			})
+			.attr("d", path)
+			.style("fill", function(d){
+				console.log(d);
+				console.log(typeof d.properties[expressed]);
+				return choropleth(d.properties, colorScale);
+			});
 	};
+
+	//Function to create color scale generator
+	function makeColorScale(data){
+		let colorClasses = [
+			"#D4B9DA",
+			"#C994C7",
+			"#DF65B0",
+			"#DD1C77",
+			"#980043"
+		];
+
+		//Create color scale generator
+		let colorScale = d3.scaleThreshold()
+			.range(colorClasses);
+
+		//Build array of all values of the expressed attribute
+		let domainArray = [];
+		for (let i=0; i<data.length; i++){
+			let val = parseInt(data[i][expressed]);
+			domainArray.push(val);
+		};
+
+		//Cluster data using ckmeans clustering algorithm to create natural breaks
+		let clusters = ss.ckmeans(domainArray, 5);
+		//Reset domain array to cluster minimums
+		domainArray = clusters.map(function(d){
+			return d3.min(d);
+		});
+
+		//Remove first value from the domain array to create class breakpoints
+		domainArray.shift();
+
+		//Assign array last 4 cluster minimums as domain
+		colorScale.domain(domainArray);
+
+		return colorScale;
+	};
+
+	//Function to test for data value and return color
+	function choropleth(props, colorScale){
+		//Make sure attribute value is a number
+		let val = parseInt(props[expressed]);
+		console.log(val);
+		//If attribute value exists, assign a color; otherwise assign gray
+		if (typeof val == "number" && !isNaN(val)){
+			return colorScale(val);
+		} else{
+			return "#CCC";
+		};
+	};
+
 })(); //Last line of main.js
