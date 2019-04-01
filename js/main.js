@@ -13,7 +13,7 @@
 	function setMap() {
 
 		//Map frame dimensions
-		let width = 960;
+		let width = window.innerWidth * 0.5;
 		let height = 460;
 
 		//Create a new svg container for the map
@@ -77,9 +77,12 @@
 					return "regions " + d.properties.adm1_code;
 				})
 				.attr("d", path);*/
+
+			//Add coordinated visualization to the map
+			setChart(europeCountriesData, colorScale);
 		});
 		console.log("I'm not a promise so I load ASAP even though I come after all the other crap in the setMap() function.");
-	};
+	}; //End of setMap()
 
 	function setGraticule(map, path) {
 		//Create graticule generator
@@ -203,6 +206,111 @@
 		} else{
 			return "#CCC";
 		};
+	};
+
+	//Function to create the coordinated bar chart
+	function setChart(europeCountriesData, colorScale){
+		//Chart frame dimensions
+		let chartWidth = window.innerWidth * 0.425,
+			chartHeight = 460,
+			leftPadding = 25,
+			rightPadding = 2,
+			topBottomPadding = 5,
+			chartInnerWidth = chartWidth - leftPadding - rightPadding,
+			chartInnerHeight = chartHeight - topBottomPadding * 2,
+			translate = "translate(" + leftPadding + "," + topBottomPadding + ")";
+
+		//Create a second svg element to hold the bar chart
+		let chart = d3.select("body")
+			.append("svg")
+			.attr("width", chartWidth)
+			.attr("height", chartHeight)
+			.attr("class", "chart");
+
+		//Create a rectangle for the chart background fill
+		let chartBackground = chart.append("rect")
+			.attr("class", "chartBackground")
+			.attr("width", chartInnerWidth)
+			.attr("height", chartInnerHeight)
+			.attr("transform", translate);
+
+		//Create a scale to size bars proportionally to frame
+		let yScale = d3.scaleLinear()
+			.range([0, 450])
+			.domain([0, 90000000]);
+
+		//Set bars for each country
+		let bars = chart.selectAll(".bars")
+			.data(europeCountriesData)
+			.enter()
+			.append("rect")
+			.sort(function(a, b){
+				return b[expressed] - a[expressed]
+			})
+			.attr("class", function(d){
+				return "bars " + d.name;
+			})
+			.attr("width", chartWidth / europeCountriesData.length - 1)
+			.attr("x", function(d, i){
+				return i * (chartWidth / europeCountriesData.length) + leftPadding;
+			})
+			.attr("height", function(d){
+				return yScale(parseInt(d[expressed]));
+			})
+			.attr("y", function(d){
+				return 450 - yScale(parseInt(d[expressed])) + topBottomPadding;
+			})
+			.style("fill", function(d){
+				return choropleth(d, colorScale);
+			});
+
+/*		//Annotate bars with attribute value text
+		let numbers = chart.selectAll(".numbers")
+			.data(europeCountriesData)
+			.enter()
+			.append("text")
+			.sort(function(a, b){
+				return b[expressed] - a[expressed]
+			})
+			.attr("class", function(d){
+				return "numbers " + d.name;
+			})
+			.attr("text-anchor", "middle")
+/!*			.attr("transform", "rotate(-65)")*!/
+			.attr("x", function(d, i){
+				let fraction = chartWidth / europeCountriesData.length;
+				return i * fraction + (fraction - 1) / 2;
+			})
+			.attr("y", function(d){
+				return chartHeight - yScale(parseInt(d[expressed])) / 2;
+			})
+			.text(function(d){
+				return d[expressed];
+			})*/
+
+		//Create text element for the chart title
+		let chartTitle = chart.append("text")
+			.attr("x", 60)
+			.attr("y", 60)
+			.attr("class", "chartTitle")
+			.text("Estimated Population in each country (thousands)");
+
+		//Create vertical axis generator
+		let yAxis = d3.axisLeft()
+			.scale(d3.scaleLinear().range([450,0]).domain([0,900]));
+
+		//Place axis
+		let axis = chart.append("g")
+			.attr("class", "axis")
+			.attr("transform", translate)
+			.call(yAxis);
+
+		//Create frame for chart border
+		let chartFrame = chart.append("rect")
+			.attr("class", "chartFrame")
+			.attr("width", chartInnerWidth)
+			.attr("height", chartInnerHeight)
+			.attr("transform", translate);
 	};
 
 })(); //Last line of main.js
