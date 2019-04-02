@@ -7,6 +7,21 @@
 	let attrArray = ["pop_est", "gdp_md_est"]; //List of attributes
 	let expressed = attrArray[0]; //Initial attribute
 
+	//Chart frame dimensions
+	let chartWidth = window.innerWidth * 0.425,
+		chartHeight = 460,
+		leftPadding = 25,
+		rightPadding = 2,
+		topBottomPadding = 5,
+		chartInnerWidth = chartWidth - leftPadding - rightPadding,
+		chartInnerHeight = chartHeight - topBottomPadding * 2,
+		translate = "translate(" + leftPadding + "," + topBottomPadding + ")";
+
+	//Create a scale to size bars proportionally to frame
+	let yScale = d3.scaleLinear()
+		.range([0, 450])
+		.domain([0, 90000000]);
+
 //Begin script when window loads
 	window.onload = setMap();
 
@@ -42,27 +57,17 @@
 		let europeCountriesGeo = d3.json("data/EuropeCountries_Geo.topojson");
 		let franceRegionsGeo = d3.json("data/FranceRegions_Geo.topojson");
 
-		console.log("I'm just a pending promise so I load ASAP. Expand Me (europeCountriesData) --> ", europeCountriesData);
-		console.log("I'm just a pending promise so I load ASAP. Expand Me (europeCountriesGeo) --> ", europeCountriesGeo);
-		console.log("I'm just a pending promise so I load ASAP. Expand Me (franceRegionsGeo) --> ", franceRegionsGeo);
-
 		promises = [europeCountriesData, europeCountriesGeo, franceRegionsGeo];
 
 		Promise.all(promises).then(function (values) {
-			console.log(values);
 			let europeCountriesData = values[0];
-			console.log("I'm a csv promise. --> ", europeCountriesData);
 			let europeCountries = topojson.feature(values[1], values[1].objects.EuropeCountries_Geo);
-			console.log("I'm a topojson promise converted to geojson. --> ", europeCountries);
-			console.log(europeCountries.features);
 			let franceRegions = topojson.feature(values[2], values[2].objects.FranceRegions).features;
-			console.log("I'm a topojson promise converted to geojson. --> ", franceRegions);
 
 			//Join csv data to GeoJson enumeration units
-			console.log("Tada! ", europeCountries);
 			joinData(europeCountries, europeCountriesData);
-			console.log(europeCountries.features[0]);
 
+			//Create color scale
 			let colorScale = makeColorScale(europeCountriesData);
 
 			//Add enumeration units to the map
@@ -80,8 +85,10 @@
 
 			//Add coordinated visualization to the map
 			setChart(europeCountriesData, colorScale);
+
+			//Add dropdown to the map
+			createDropdown(attrArray, europeCountriesData);
 		});
-		console.log("I'm not a promise so I load ASAP even though I come after all the other crap in the setMap() function.");
 	}; //End of setMap()
 
 	function setGraticule(map, path) {
@@ -133,8 +140,6 @@
 
 	function setEnumerationUnits(europeCountries, map, path, colorScale){
 		//Add Europe countries to the map
-		console.log(europeCountries);
-		console.log(colorScale);
 /*		let countries = map.append("path")
 			.datum(europeCountries)
 			.attr("class", "countries")
@@ -152,8 +157,6 @@
 			})
 			.attr("d", path)
 			.style("fill", function(d){
-				console.log(d);
-				console.log(typeof d.properties[expressed]);
 				return choropleth(d.properties, colorScale);
 			});
 	};
@@ -199,7 +202,7 @@
 	function choropleth(props, colorScale){
 		//Make sure attribute value is a number
 		let val = parseInt(props[expressed]);
-		console.log(val);
+
 		//If attribute value exists, assign a color; otherwise assign gray
 		if (typeof val == "number" && !isNaN(val)){
 			return colorScale(val);
@@ -210,16 +213,6 @@
 
 	//Function to create the coordinated bar chart
 	function setChart(europeCountriesData, colorScale){
-		//Chart frame dimensions
-		let chartWidth = window.innerWidth * 0.425,
-			chartHeight = 460,
-			leftPadding = 25,
-			rightPadding = 2,
-			topBottomPadding = 5,
-			chartInnerWidth = chartWidth - leftPadding - rightPadding,
-			chartInnerHeight = chartHeight - topBottomPadding * 2,
-			translate = "translate(" + leftPadding + "," + topBottomPadding + ")";
-
 		//Create a second svg element to hold the bar chart
 		let chart = d3.select("body")
 			.append("svg")
@@ -234,11 +227,6 @@
 			.attr("height", chartInnerHeight)
 			.attr("transform", translate);
 
-		//Create a scale to size bars proportionally to frame
-		let yScale = d3.scaleLinear()
-			.range([0, 450])
-			.domain([0, 90000000]);
-
 		//Set bars for each country
 		let bars = chart.selectAll(".bars")
 			.data(europeCountriesData)
@@ -250,43 +238,7 @@
 			.attr("class", function(d){
 				return "bars " + d.name;
 			})
-			.attr("width", chartWidth / europeCountriesData.length - 1)
-			.attr("x", function(d, i){
-				return i * (chartWidth / europeCountriesData.length) + leftPadding;
-			})
-			.attr("height", function(d){
-				return yScale(parseInt(d[expressed]));
-			})
-			.attr("y", function(d){
-				return 450 - yScale(parseInt(d[expressed])) + topBottomPadding;
-			})
-			.style("fill", function(d){
-				return choropleth(d, colorScale);
-			});
-
-/*		//Annotate bars with attribute value text
-		let numbers = chart.selectAll(".numbers")
-			.data(europeCountriesData)
-			.enter()
-			.append("text")
-			.sort(function(a, b){
-				return b[expressed] - a[expressed]
-			})
-			.attr("class", function(d){
-				return "numbers " + d.name;
-			})
-			.attr("text-anchor", "middle")
-/!*			.attr("transform", "rotate(-65)")*!/
-			.attr("x", function(d, i){
-				let fraction = chartWidth / europeCountriesData.length;
-				return i * fraction + (fraction - 1) / 2;
-			})
-			.attr("y", function(d){
-				return chartHeight - yScale(parseInt(d[expressed])) / 2;
-			})
-			.text(function(d){
-				return d[expressed];
-			})*/
+			.attr("width", chartWidth / europeCountriesData.length - 1);
 
 		//Create text element for the chart title
 		let chartTitle = chart.append("text")
@@ -311,6 +263,107 @@
 			.attr("width", chartInnerWidth)
 			.attr("height", chartInnerHeight)
 			.attr("transform", translate);
-	};
 
+		updateChart(bars, europeCountriesData.length, colorScale);
+	}; //End of setChart()
+
+	//Function to create a dropdown menu for attribute selection
+	function createDropdown(attrArray, europeCountriesData){
+		//Add select element
+		let dropdown = d3.select("body")
+			.append("select")
+			.attr("class", "dropdown")
+			.on("change", function(){
+				changeAttribute(this.value, europeCountriesData)
+			});
+
+		//Add initial option
+		let titleOption = dropdown.append("option")
+			.attr("class", "titleOption")
+			.attr("disabled", "true")
+			.text("Select Attribute");
+
+		//Add attribute name options
+		let attrOptions = dropdown.selectAll("attrOptions")
+			.data(attrArray)
+			.enter()
+			.append("option")
+			.attr("value", function(d){ return d})
+			.text(function(d){ return d});
+
+	//Dropdown change listener handler
+	function changeAttribute(attribute, europeCountriesData){
+		//Change the expressed attribute
+		expressed = attribute;
+
+		//Recreate the color scale
+		let colorScale = makeColorScale(europeCountriesData);
+
+		//Recolor enumeration units
+		let countries = d3.selectAll(".countries")
+			.style("fill", function(d){
+				return choropleth(d.properties, colorScale)
+			});
+		};
+
+		//Re-sort, resize, and recolor bars
+		let bars = d3.selectAll(".bar")
+		//Re-sort bars
+			.sort(function(a, b){
+				return b[expressed] - b[expressed];
+			});
+
+		updateChart(bars, europeCountriesData.length, colorScale);
+	}; //End of changeAttribute()
+
+	function updateChart(bars, n, colorScale){
+		//Position bars
+		bars.attr("x", function(d, i){
+				return i * (chartWidth / n) + leftPadding;
+			})
+			//Size/resize bars
+			.attr("height", function(d){
+				return yScale(parseInt(d[expressed]));
+			})
+			.attr("y", function(d){
+				return 450 - yScale(parseInt(d[expressed])) + topBottomPadding;
+			})
+			.style("fill", function(d){
+				return choropleth(d, colorScale);
+			})
+		let chartTitle = d3.select(".chartTitle")
+			.text("Estimated Population in each country (thousands)");
+	}
 })(); //Last line of main.js
+
+/*
+			.attr("x", function(d, i){
+				return i * (chartWidth / europeCountriesData.length) + leftPadding;
+			})
+			.attr("height", function(d){
+				return yScale(parseInt(d[expressed]));
+			})
+			.attr("y", function(d){
+				return 450 - yScale(parseInt(d[expressed])) + topBottomPadding;
+			})
+			.style("fill", function(d){
+				return choropleth(d, colorScale);
+			});
+
+
+
+
+			.attr("x", function(d, i){
+				return i * (chartInnerWidth / europeCountriesData.length) + leftPadding;
+			})
+		//Resize bars
+			.attr("height", function(d, i){
+				return 460 - yScale(parseInt(d[expressed]));
+			})
+			.attr("y", function(d, i){
+				return yScale(parseInt(d[expressed])) + topBottomPadding;
+			})
+		//Recolor bars
+			.style("fill", function(d){
+				return choropleth(d, colorScale);
+			});*/
