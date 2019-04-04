@@ -69,6 +69,7 @@
 
 			//Create color scale
 			let colorScale = makeColorScale(europeCountriesData);
+			console.log(colorScale);
 
 			//Add enumeration units to the map
 			setEnumerationUnits(europeCountries, map, path, colorScale);
@@ -206,7 +207,7 @@
 		//If attribute value exists, assign a color; otherwise assign gray
 		if (typeof val == "number" && !isNaN(val)){
 			return colorScale(val);
-		} else{
+		}else{
 			return "#CCC";
 		};
 	};
@@ -238,7 +239,7 @@
 			.attr("class", function(d){
 				return "bars " + d.name;
 			})
-			.attr("width", chartWidth / europeCountriesData.length - 1);
+			.attr("width", chartInnerWidth / europeCountriesData.length - 1);
 
 		//Create text element for the chart title
 		let chartTitle = chart.append("text")
@@ -268,12 +269,12 @@
 	}; //End of setChart()
 
 	//Function to create a dropdown menu for attribute selection
-	function createDropdown(attrArray, europeCountriesData){
+	function createDropdown(attrArray, europeCountriesData) {
 		//Add select element
 		let dropdown = d3.select("body")
 			.append("select")
 			.attr("class", "dropdown")
-			.on("change", function(){
+			.on("change", function () {
 				changeAttribute(this.value, europeCountriesData)
 			});
 
@@ -288,8 +289,13 @@
 			.data(attrArray)
 			.enter()
 			.append("option")
-			.attr("value", function(d){ return d})
-			.text(function(d){ return d});
+			.attr("value", function (d) {
+				return d
+			})
+			.text(function (d) {
+				return d
+			});
+	};
 
 	//Dropdown change listener handler
 	function changeAttribute(attribute, europeCountriesData){
@@ -298,20 +304,27 @@
 
 		//Recreate the color scale
 		let colorScale = makeColorScale(europeCountriesData);
+		console.log(colorScale);
 
 		//Recolor enumeration units
 		let countries = d3.selectAll(".countries")
+			.transition()
+			.duration(1000)
 			.style("fill", function(d){
 				return choropleth(d.properties, colorScale)
 			});
-		};
 
 		//Re-sort, resize, and recolor bars
-		let bars = d3.selectAll(".bar")
+		let bars = d3.selectAll(".bars")
 		//Re-sort bars
 			.sort(function(a, b){
 				return b[expressed] - b[expressed];
-			});
+			})
+			.transition()
+			.delay(function(d, i){
+				return i * 20
+			})
+			.duration(500);
 
 		updateChart(bars, europeCountriesData.length, colorScale);
 	}; //End of changeAttribute()
@@ -322,7 +335,7 @@
 				return i * (chartWidth / n) + leftPadding;
 			})
 			//Size/resize bars
-			.attr("height", function(d){
+			.attr("height", function(d, i){
 				return yScale(parseInt(d[expressed]));
 			})
 			.attr("y", function(d){
