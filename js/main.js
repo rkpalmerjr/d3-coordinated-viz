@@ -159,7 +159,18 @@
 			.attr("d", path)
 			.style("fill", function(d){
 				return choropleth(d.properties, colorScale);
-			});
+			})
+			.on("mouseover", function(d){
+				highlight(d.properties);
+			})
+			.on("mouseout", function(d){
+				dehighlight(d.properties);
+			})
+			.on("mousemove", moveLabel);
+
+		//Add style descriptor to each path
+		let desc = countries.append("desc")
+			.text('{"stroke": "#000", "stroke-width": "0.5px"}');
 	};
 
 	//Function to create color scale generator
@@ -239,7 +250,14 @@
 			.attr("class", function(d){
 				return "bars " + d.name;
 			})
-			.attr("width", chartInnerWidth / europeCountriesData.length - 1);
+			.attr("width", chartInnerWidth / europeCountriesData.length - 1)
+			.on("mouseover", highlight)
+			.on("mouseout", dehighlight)
+			.on("mousemove", moveLabel);
+
+		//Add style descriptor to each rect
+		let desc = bars.append("desc")
+			.text('{"stroke": "none", "stroke-width": "0px"}');
 
 		//Create text element for the chart title
 		let chartTitle = chart.append("text")
@@ -347,6 +365,80 @@
 		let chartTitle = d3.select(".chartTitle")
 			.text("Estimated Population in each country (thousands)");
 	}
+
+	//Function to highlight enumeration units and bars
+	function highlight(props){
+		//Change stroke
+		let selected = d3.selectAll("." + props.name)
+			.style("stroke", "blue")
+			.style("stroke-width", "2");
+
+		setLabel(props);
+	};
+
+	//Function to dehighlight enumeration units and bars
+	function dehighlight(props){
+		let selected = d3.selectAll("." + props.name)
+			.style("stroke", function(){
+				return getStyle(this, "stroke")
+			})
+			.style("stroke-width", function(){
+				return getStyle(this, "stroke-width")
+			});
+		function getStyle(element, styleName){
+			let styleText = d3.select(element)
+				.select("desc")
+				.text();
+
+			let styleObject = JSON.parse(styleText);
+
+			return styleObject[styleName];
+		};
+
+		d3.select(".infoLabel")
+			.remove();
+	};
+
+	//Function to create dynamic label
+	function setLabel(props){
+		//Label content
+		let labelAttribute = "<h1>" + props[expressed] +
+			"</h1><b>" + expressed + "</b>";
+
+		//Create info label div
+		let infoLabel = d3.select("body")
+			.append("div")
+			.attr("class", "infoLabel")
+			.attr("id", props.name + "_label")
+			.html(labelAttribute);
+
+		let countryName = infoLabel.append("div")
+			.attr("class", "labelname")
+			.html(props.name);
+	};
+
+	//Function to move info label with mouse
+	function moveLabel(){
+		//Get width of label
+		let labelWidth = d3.select(".infoLabel")
+			.node()
+			.getBoundingClientRect()
+			.width;
+		//Use coordinates of mousemove event to set label coordinates
+		let x1 = d3.event.clientX + 10,
+			y1 = d3.event.clientY - 75,
+			x2 = d3.event.clientX - labelWidth - 10,
+			y2 = d3.event.clientY + 25;
+
+		//Horizontal label coordinate, testing for overflow
+		let x = d3.event.clientX > window.innerWidth - labelWidth - 20 ? x2 : x1;
+		//Vertical label coordinate, testing for overflow
+		let y = d3.event.clientY < 75 ? y2: y1;
+
+		d3.select(".infoLabel")
+			.style("left", x + "px")
+			.style("top", y + "px");
+	};
 })(); //Last line of main.js
 
 /*
